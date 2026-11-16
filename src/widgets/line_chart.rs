@@ -258,19 +258,34 @@ pub fn render_line_chart(
                 ])
                 .style(theme.dim),
         );
-    chart.render(area, buf);
+    // The legend gets its own gutter on the right, so it never sits on top of a line.
+    let legend_width = legend_lines
+        .iter()
+        .map(|s| crate::text::display_width(s))
+        .max()
+        .unwrap_or(0)
+        .min(12) as u16
+        + 2;
+    let show_legend = shown.len() > 1
+        && !legend_lines.is_empty()
+        && area.height > 4
+        && area.width > legend_width.saturating_add(24);
+    let chart_area = if show_legend {
+        Rect::new(
+            area.x,
+            area.y,
+            area.width.saturating_sub(legend_width + 1),
+            area.height,
+        )
+    } else {
+        area
+    };
+    chart.render(chart_area, buf);
 
-    // draw boxed legend at right if space
-    if area.width > 20 && area.height > 4 && !legend_lines.is_empty() {
-        let lw = legend_lines
-            .iter()
-            .map(|s| crate::text::display_width(s))
-            .max()
-            .unwrap_or(0)
-            .min(area.width.saturating_sub(2) as usize) as u16
-            + 2;
+    if show_legend {
+        let lw = legend_width;
         let lh = (legend_lines.len() as u16 + 2).min(area.height.saturating_sub(1));
-        let lx = area.x + area.width.saturating_sub(lw + 1);
+        let lx = area.x + area.width.saturating_sub(lw);
         let ly = area.y + 1;
         let lrect = Rect::new(lx, ly, lw, lh);
         let block = Block::default()
