@@ -10,3 +10,9 @@ pub mod render;
 pub mod run;
 #[cfg(feature = "tui")]
 pub mod terminal;
+#[cfg(feature = "tui")]
+pub mod text;
+#[cfg(feature = "tui")]
+pub mod theme;
+#[cfg(feature = "tui")]
+pub mod widgets;
