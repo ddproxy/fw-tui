@@ -1,0 +1,27 @@
+[package]
+name = "fw-tui"
+description = "Terminal dashboard widgets: panels, tables, gauges, charts; pure model plus ratatui drawing"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.99"
+license = "MIT"
+publish = false
+
+[features]
+# Off by default: the model and sanitizer build without a terminal library.
+tui = ["dep:ratatui", "dep:crossterm"]
+
+[dependencies]
+ratatui = { version = "0.30", default-features = false, features = ["crossterm", "crossterm_0_29"], optional = true }
+crossterm = { version = "0.29", optional = true }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+
+[profile.dev]
+panic = "unwind"
+[profile.release]
+panic = "unwind"
