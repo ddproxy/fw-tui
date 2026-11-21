@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+jobs:
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: stable
+      - name: Install cargo-cyclonedx
+        run: cargo install cargo-cyclonedx --version 0.5.10 --locked
+      - name: Create source archive
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          git archive --format=tar.gz --prefix="fw-tui-${tag}/" -o "fw-tui-${tag}-source.tar.gz" HEAD
+      - name: Generate CycloneDX SBOM
+        run: |
+          cargo cyclonedx --format json --all-features \
+            --override-filename "fw-tui-${GITHUB_REF_NAME}-sbom.json"
+      - name: Checksums
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          sha256sum "fw-tui-${tag}-source.tar.gz" "fw-tui-${tag}-sbom.json" > checksums.txt
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          assets=("fw-tui-${tag}-source.tar.gz" "fw-tui-${tag}-sbom.json" checksums.txt)
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "${assets[@]}" --clobber
+          else
+            gh release create "$tag" "${assets[@]}" --title "$tag" --generate-notes
+          fi
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: fw-tui-*-source.tar.gz

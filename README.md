@@ -1,5 +1,11 @@
 # fw-tui
 
+[![CI](https://github.com/ddproxy/fw-tui/actions/workflows/ci.yml/badge.svg?query=branch%3Amain)](https://github.com/ddproxy/fw-tui/actions/workflows/ci.yml?query=branch%3Amain)
+[![CodeQL](https://github.com/ddproxy/fw-tui/actions/workflows/codeql.yml/badge.svg)](https://github.com/ddproxy/fw-tui/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/ddproxy/fw-tui/badge)](https://scorecard.dev/viewer/?uri=github.com/ddproxy/fw-tui)
+[![Release](https://img.shields.io/github/v/release/ddproxy/fw-tui)](https://github.com/ddproxy/fw-tui/releases/latest)
+[![License](https://img.shields.io/github/license/ddproxy/fw-tui)](LICENSE)
+
 `fw-tui` is a small Rust library of reusable terminal dashboard widgets for ratatui-based TUIs.
 It provides a pure model/sanitizer that build without terminal dependencies and, behind the `tui`
 feature, rendering widgets and terminal helpers.
@@ -41,4 +47,28 @@ cargo run --features tui --example gallery
 export CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_TARGET_DIR=/srv/work/target-ft
 cargo test --features tui
 cargo test
+```
+
+## Documentation
+
+- [Documentation index](docs/index.md)
+- [Security scanning](docs/security-scanning.md)
+
+## Security
+
+Report vulnerabilities through [GitHub private vulnerability reporting](https://github.com/ddproxy/fw-tui/security/advisories/new). See [SECURITY.md](SECURITY.md) for supported versions and response times, and [Security scanning](docs/security-scanning.md) for workflow checks and finding locations.
+
+## Verify a release
+
+Replace `v0.1.0` with the tag you are verifying:
+
+```sh
+tag=v0.1.0
+gh release download "$tag" --repo ddproxy/fw-tui \
+  --pattern "fw-tui-${tag}-source.tar.gz" \
+  --pattern "fw-tui-${tag}-sbom.json" \
+  --pattern checksums.txt
+
+gh attestation verify "fw-tui-${tag}-source.tar.gz" --repo ddproxy/fw-tui
+sha256sum --check checksums.txt
 ```
