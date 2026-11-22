@@ -1,3 +1,23 @@
+//! Input handling and the demo event loop.
+//!
+//! Requires the `tui` feature. Key mapping is a pure function and is tested without a terminal;
+//! only [`run_demo`] needs a tty.
+//!
+//! # Examples
+//!
+//! ```
+//! use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
+//! use fw_tui::run::{action_for, Action};
+//!
+//! let key = KeyEvent {
+//!     code: KeyCode::Char('q'),
+//!     modifiers: KeyModifiers::NONE,
+//!     kind: KeyEventKind::Press,
+//!     state: KeyEventState::NONE,
+//! };
+//! assert_eq!(action_for(key), Some(Action::Quit));
+//! ```
+
 use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
@@ -13,12 +33,58 @@ use crate::terminal::TerminalGuard;
 /// Longest a key press waits before the screen is redrawn anyway.
 const POLL: Duration = Duration::from_millis(100);
 
+/// What a recognised key press asks the demo to do.
+///
+/// # Examples
+///
+/// ```
+/// use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
+/// use fw_tui::run::{action_for, Action};
+///
+/// let key = KeyEvent {
+///     code: KeyCode::Esc,
+///     modifiers: KeyModifiers::NONE,
+///     kind: KeyEventKind::Press,
+///     state: KeyEventState::NONE,
+/// };
+/// assert_eq!(action_for(key), Some(Action::Quit));
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
+    /// Leave the demo and restore the terminal.
+    ///
+    /// ```
+    /// use fw_tui::run::Action;
+    ///
+    /// assert_eq!(Action::Quit, Action::Quit);
+    /// ```
     Quit,
+    /// Freeze or resume the displayed rows.
+    ///
+    /// ```
+    /// use fw_tui::run::Action;
+    ///
+    /// assert_ne!(Action::TogglePause, Action::Quit);
+    /// ```
     TogglePause,
 }
 
+/// Maps a key press to an action; unknown keys and non-press events are ignored.
+///
+/// # Examples
+///
+/// ```
+/// use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
+/// use fw_tui::run::{action_for, Action};
+///
+/// let key = KeyEvent {
+///     code: KeyCode::Char('p'),
+///     modifiers: KeyModifiers::NONE,
+///     kind: KeyEventKind::Press,
+///     state: KeyEventState::NONE,
+/// };
+/// assert_eq!(action_for(key), Some(Action::TogglePause));
+/// ```
 pub fn action_for(event: KeyEvent) -> Option<Action> {
     // Some terminals also report key releases; acting on them would double every press.
     if event.kind != KeyEventKind::Press {
@@ -36,6 +102,16 @@ pub fn action_for(event: KeyEvent) -> Option<Action> {
 
 /// Runs the demo dashboard until the user quits or `stop` is set. The caller sets `stop` from a
 /// signal handler; the guard restores the terminal on the way out either way.
+///
+/// This example compiles but is not executed during doc tests because it needs a terminal.
+///
+/// ```no_run
+/// use std::sync::atomic::AtomicBool;
+/// use std::time::Duration;
+///
+/// let stop = AtomicBool::new(false);
+/// fw_tui::run::run_demo(&stop, Duration::from_millis(250)).unwrap();
+/// ```
 pub fn run_demo(stop: &AtomicBool, tick: Duration) -> io::Result<()> {
     let _guard = TerminalGuard::enter()?;
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
@@ -105,9 +181,40 @@ mod tests {
     }
 
     #[test]
-    fn key_releases_do_nothing() {
-        let mut release = press(KeyCode::Char('q'), KeyModifiers::NONE);
-        release.kind = KeyEventKind::Release;
-        assert_eq!(action_for(release), None);
+    fn key_releases_and_repeats_do_nothing() {
+        for kind in [KeyEventKind::Release, KeyEventKind::Repeat] {
+            let mut event = press(KeyCode::Char('q'), KeyModifiers::NONE);
+            event.kind = kind;
+            assert_eq!(action_for(event), None, "{kind:?} must not be handled");
+        }
+    }
+
+    #[test]
+    fn unrelated_keys_and_navigation_are_ignored() {
+        for code in [
+            KeyCode::Up,
+            KeyCode::Down,
+            KeyCode::Enter,
+            KeyCode::Backspace,
+            KeyCode::Char('?'),
+        ] {
+            assert_eq!(action_for(press(code, KeyModifiers::NONE)), None);
+        }
+    }
+
+    #[test]
+    fn quit_keys_work_with_extra_modifiers() {
+        assert_eq!(
+            action_for(press(KeyCode::Char('q'), KeyModifiers::ALT)),
+            Some(Action::Quit)
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Esc, KeyModifiers::SHIFT)),
+            Some(Action::Quit)
+        );
+        assert_eq!(
+            action_for(press(KeyCode::Char('p'), KeyModifiers::CONTROL)),
+            Some(Action::TogglePause)
+        );
     }
 }

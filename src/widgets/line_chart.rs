@@ -1,3 +1,30 @@
+//! Multi-series line chart with axes, gaps, zoom aggregation and a boxed legend.
+//!
+//! Requires the `tui` feature.
+//!
+//! # Examples
+//!
+//! ```
+//! use fw_tui::theme::Theme;
+//! use fw_tui::widgets::{render_line_chart, LineChartConfig, Series};
+//! use ratatui::backend::TestBackend;
+//! use ratatui::Terminal;
+//!
+//! let series = vec![Series::new("rtt", vec![Some(1.0), None, Some(3.0)])];
+//! let mut terminal = Terminal::new(TestBackend::new(40, 8)).unwrap();
+//! terminal
+//!     .draw(|f| {
+//!         render_line_chart(
+//!             f.area(),
+//!             f.buffer_mut(),
+//!             &series,
+//!             &LineChartConfig::default(),
+//!             &Theme::dark(),
+//!         )
+//!     })
+//!     .unwrap();
+//! ```
+
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
@@ -8,19 +35,79 @@ use ratatui::widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Paragrap
 use crate::sanitize::printable;
 use crate::theme::Theme;
 
+/// How samples inside a zoom bucket are combined.
+///
+/// # Examples
+///
+/// ```
+/// use fw_tui::widgets::{LineChartConfig, ZoomAgg};
+///
+/// let cfg = LineChartConfig { agg: ZoomAgg::Mean, ..Default::default() };
+/// assert_eq!(cfg.agg, ZoomAgg::Mean);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ZoomAgg {
+    /// Keep the largest finite sample in the bucket.
+    ///
+    /// ```
+    /// use fw_tui::widgets::ZoomAgg;
+    ///
+    /// assert_eq!(ZoomAgg::Max, ZoomAgg::Max);
+    /// ```
     Max,
+    /// Use the mean of the finite samples in the bucket.
+    ///
+    /// ```
+    /// use fw_tui::widgets::ZoomAgg;
+    ///
+    /// assert_ne!(ZoomAgg::Mean, ZoomAgg::Max);
+    /// ```
     Mean,
 }
 
+/// One named series; `None` points are drawn as gaps.
+///
+/// # Examples
+///
+/// ```
+/// use fw_tui::widgets::Series;
+///
+/// let series = Series::new("rtt", vec![Some(1.0), None, Some(3.0)]);
+/// assert_eq!(series.points.len(), 3);
+/// ```
 #[derive(Debug, Clone)]
 pub struct Series {
+    /// Legend/dataset name, escaped before drawing.
+    ///
+    /// ```
+    /// use fw_tui::widgets::Series;
+    ///
+    /// let series = Series::new("rtt", vec![]);
+    /// assert_eq!(series.name, "rtt");
+    /// ```
     pub name: String,
-    pub points: Vec<Option<f64>>, // missing => gap
+    /// Samples in order; missing, negative and non-finite values are ignored.
+    ///
+    /// ```
+    /// use fw_tui::widgets::Series;
+    ///
+    /// let series = Series { name: "x".into(), points: vec![None, Some(f64::NAN)] };
+    /// assert_eq!(series.points.len(), 2);
+    /// ```
+    pub points: Vec<Option<f64>>,
 }
 
 impl Series {
+    /// Creates a series with an escaped name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fw_tui::widgets::Series;
+    ///
+    /// let series = Series::new("r\u{1b}[31m", vec![]);
+    /// assert!(!series.name.contains('\u{1b}'));
+    /// ```
     pub fn new(name: impl Into<String>, points: Vec<Option<f64>>) -> Self {
         Self {
             name: printable(&name.into()),
@@ -29,10 +116,46 @@ impl Series {
     }
 }
 
+/// Chart options: zoom factor, aggregation and focused series index.
+///
+/// # Examples
+///
+/// ```
+/// use fw_tui::widgets::{LineChartConfig, ZoomAgg};
+///
+/// let cfg = LineChartConfig::default();
+/// assert_eq!(cfg.zoom, 1);
+/// assert_eq!(cfg.agg, ZoomAgg::Max);
+/// assert_eq!(cfg.focused, 0);
+/// ```
 #[derive(Debug, Clone)]
 pub struct LineChartConfig {
+    /// Number of samples combined into one displayed point; values below one act as one.
+    ///
+    /// ```
+    /// use fw_tui::widgets::LineChartConfig;
+    ///
+    /// let cfg = LineChartConfig { zoom: 4, ..Default::default() };
+    /// assert_eq!(cfg.zoom, 4);
+    /// ```
     pub zoom: usize,
+    /// Reduction used for each zoom bucket.
+    ///
+    /// ```
+    /// use fw_tui::widgets::{LineChartConfig, ZoomAgg};
+    ///
+    /// let cfg = LineChartConfig { agg: ZoomAgg::Max, ..Default::default() };
+    /// assert_eq!(cfg.agg, ZoomAgg::Max);
+    /// ```
     pub agg: ZoomAgg,
+    /// Index of the highlighted series; out-of-range values clamp to the last one.
+    ///
+    /// ```
+    /// use fw_tui::widgets::LineChartConfig;
+    ///
+    /// let cfg = LineChartConfig { focused: 99, ..Default::default() };
+    /// assert_eq!(cfg.focused, 99);
+    /// ```
     pub focused: usize,
 }
 
@@ -84,6 +207,33 @@ fn aggregate(points: &[Option<f64>], zoom: usize, agg: ZoomAgg) -> Vec<Option<f6
 }
 
 /// Render a multi-series line chart with y ticks, x labels, zoom factor and boxed legend.
+///
+/// Handles empty input, more than sixteen series (which are reported as `+N` in the legend),
+/// hostile floats and zero-sized areas. Series names are escaped here as well as in
+/// [`Series::new`], because the struct fields are public.
+///
+/// # Examples
+///
+/// ```
+/// use fw_tui::theme::Theme;
+/// use fw_tui::widgets::{render_line_chart, LineChartConfig, Series};
+/// use ratatui::backend::TestBackend;
+/// use ratatui::Terminal;
+///
+/// let series = vec![Series::new("a", vec![Some(1.0), Some(2.0)])];
+/// let mut terminal = Terminal::new(TestBackend::new(50, 8)).unwrap();
+/// terminal
+///     .draw(|f| {
+///         render_line_chart(
+///             f.area(),
+///             f.buffer_mut(),
+///             &series,
+///             &LineChartConfig::default(),
+///             &Theme::dark(),
+///         )
+///     })
+///     .unwrap();
+/// ```
 pub fn render_line_chart(
     area: Rect,
     buf: &mut Buffer,
@@ -96,13 +246,20 @@ pub fn render_line_chart(
         return;
     }
     let max_series = 16usize;
-    let shown: Vec<Series> = series.iter().take(max_series).cloned().collect();
+    let shown: Vec<Series> = series
+        .iter()
+        .take(max_series)
+        .map(|s| Series {
+            name: printable(&s.name),
+            points: s.points.clone(),
+        })
+        .collect();
     let extra = series.len().saturating_sub(max_series);
     let zoom = cfg.zoom.max(1);
 
-    // Prepare data per series, splitting gaps into segments for Chart (Chart doesn't natively gap; use NaN breaks not supported)
-    // ratatui Chart draws lines between points in dataset; to draw gaps we split into datasets per contiguous segment.
-    let mut datasets: Vec<Dataset> = Vec::new();
+    // Dataset slices must outlive the Chart, so keep the owned data in `data_store`.
+    let mut data_store: Vec<Vec<(f64, f64)>> = Vec::new();
+    let mut ds_meta: Vec<(String, Style)> = Vec::new();
     let mut max_y = 0.0f64;
     let mut sample_count = 0usize;
 
@@ -117,7 +274,7 @@ pub fn render_line_chart(
         } else {
             theme.dim
         };
-        // split segments on None
+        // Chart has no gap marker, so split missing samples into separate datasets.
         let mut seg: Vec<(f64, f64)> = Vec::new();
         let mut segs: Vec<Vec<(f64, f64)>> = Vec::new();
         for (i, p) in agg.iter().enumerate() {
@@ -133,56 +290,7 @@ pub fn render_line_chart(
             segs.push(seg);
         }
         if segs.is_empty() {
-            // idle flat line at 0
-            segs.push(vec![(0.0, 0.0)]);
-        }
-        for segv in segs {
-            // store in a leaked-like structure? Dataset holds &[ (f64,f64) ] by ref; need owned storage alive.
-            // We'll collect owned and rebuild later by storing boxes - easier: use owned Vec and keep in parallel vec.
-            datasets.push(
-                Dataset::default()
-                    .name(if focused || shown.len() == 1 {
-                        s.name.clone()
-                    } else {
-                        String::new()
-                    })
-                    .marker(Marker::Braille)
-                    .graph_type(GraphType::Line)
-                    .style(style)
-                    .data(&[]),
-            ); // placeholder, fix below
-               // can't set data ref easily; workaround: render manually? but Chart is convenient. Instead build data store.
-            let _ = segv; // handled below
-        }
-    }
-
-    // Rebuild properly with owned storage
-    let mut data_store: Vec<Vec<(f64, f64)>> = Vec::new();
-    let mut ds_meta: Vec<(String, Style)> = Vec::new();
-    for (idx, s) in shown.iter().enumerate() {
-        let agg = aggregate(&s.points, zoom, cfg.agg);
-        let focused = idx == cfg.focused.min(shown.len().saturating_sub(1));
-        let style = if shown.len() <= 1 {
-            theme.accent
-        } else if focused {
-            theme.accent.add_modifier(Modifier::BOLD)
-        } else {
-            theme.dim
-        };
-        let mut seg: Vec<(f64, f64)> = Vec::new();
-        let mut segs: Vec<Vec<(f64, f64)>> = Vec::new();
-        for (i, p) in agg.iter().enumerate() {
-            if let Some(v) = p {
-                seg.push((i as f64, *v));
-            } else if !seg.is_empty() {
-                segs.push(seg);
-                seg = Vec::new();
-            }
-        }
-        if !seg.is_empty() {
-            segs.push(seg);
-        }
-        if segs.is_empty() {
+            // Idle series still draw a flat line.
             segs.push(vec![
                 (0.0, 0.0),
                 (sample_count.saturating_sub(1).max(1) as f64, 0.0),
@@ -211,7 +319,7 @@ pub fn render_line_chart(
         })
         .collect();
 
-    // autoscale with floor so idle draws flat
+    // Autoscale with a floor so idle data draws a flat line.
     let y_max = if max_y <= 0.0 { 1.0 } else { max_y };
     let x_max = sample_count.saturating_sub(1).max(1) as f64;
     let x_label_right = if zoom > 1 {
@@ -220,7 +328,6 @@ pub fn render_line_chart(
         format!("{}", sample_count)
     };
 
-    // Legend box text on right (render chart then overlay legend manually area)
     let legend_lines: Vec<String> = {
         let mut l: Vec<String> = shown
             .iter()
@@ -312,14 +419,10 @@ pub fn render_line_chart(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text::buffer_text;
-    use ratatui::backend::TestBackend;
-    use ratatui::Terminal;
+    use crate::test_support::{assert_no_control_chars, render_text};
 
     #[test]
     fn line_chart_labels_legend_zoom() {
-        let backend = TestBackend::new(60, 12);
-        let mut terminal = Terminal::new(backend).unwrap();
         let theme = Theme::dark();
         let series = vec![
             Series::new("a", vec![Some(1.0), Some(2.0), Some(3.0), Some(4.0)]),
@@ -330,25 +433,116 @@ mod tests {
             agg: ZoomAgg::Max,
             focused: 0,
         };
-        terminal
-            .draw(|f| render_line_chart(f.area(), f.buffer_mut(), &series, &cfg, &theme))
-            .unwrap();
-        let text = buffer_text(terminal.backend().buffer());
+        let text = render_text(60, 12, |f| {
+            render_line_chart(f.area(), f.buffer_mut(), &series, &cfg, &theme)
+        });
         assert!(text.contains("0"), "{text}");
-        assert!(text.contains("(2x)") || text.contains("2x"), "{text}");
+        assert!(text.contains("2x") || text.contains("(2x)"), "{text}");
+        assert!(text.contains("*a"), "{text}");
     }
 
     #[test]
     fn line_chart_tiny_no_panic() {
-        let backend = TestBackend::new(1, 1);
-        let mut terminal = Terminal::new(backend).unwrap();
         let theme = Theme::dark();
-        let series = vec![Series::new(
-            "a",
-            vec![None, Some(f64::NAN), Some(f64::INFINITY)],
-        )];
-        terminal
-            .draw(|f| {
+        for (w, h) in [(0, 0), (1, 1), (2, 3), (200, 4)] {
+            let text = render_text(w, h, |f| {
+                render_line_chart(
+                    f.area(),
+                    f.buffer_mut(),
+                    &[Series::new(
+                        "a",
+                        vec![None, Some(f64::NAN), Some(f64::INFINITY)],
+                    )],
+                    &LineChartConfig::default(),
+                    &theme,
+                )
+            });
+            assert_no_control_chars(&text);
+        }
+    }
+
+    #[test]
+    fn empty_and_oversized_series_are_safe() {
+        let theme = Theme::dark();
+        let empty = render_text(30, 6, |f| {
+            render_line_chart(
+                f.area(),
+                f.buffer_mut(),
+                &[],
+                &LineChartConfig::default(),
+                &theme,
+            )
+        });
+        assert_no_control_chars(&empty);
+
+        let many: Vec<Series> = (0..20)
+            .map(|i| Series::new(format!("s{i}"), vec![Some(i as f64)]))
+            .collect();
+        let text = render_text(70, 10, |f| {
+            render_line_chart(
+                f.area(),
+                f.buffer_mut(),
+                &many,
+                &LineChartConfig {
+                    focused: 99,
+                    ..Default::default()
+                },
+                &theme,
+            )
+        });
+        assert!(text.contains("+4") || text.contains("s"), "{text}");
+    }
+
+    #[test]
+    fn direct_series_names_cannot_inject_ansi() {
+        let theme = Theme::dark();
+        let series = vec![
+            Series {
+                name: "a\u{1b}[2J".into(),
+                points: vec![Some(1.0)],
+            },
+            Series {
+                name: "b\u{202e}".into(),
+                points: vec![Some(2.0)],
+            },
+        ];
+        let text = render_text(70, 10, |f| {
+            render_line_chart(
+                f.area(),
+                f.buffer_mut(),
+                &series,
+                &LineChartConfig::default(),
+                &theme,
+            )
+        });
+        assert_no_control_chars(&text);
+        assert!(!text.contains('\u{1b}'));
+        assert!(!text.contains('\u{202e}'));
+    }
+
+    #[test]
+    fn aggregation_modes_and_hostile_points() {
+        let points = vec![Some(1.0), None, Some(f64::NAN), Some(5.0), Some(-3.0)];
+        assert_eq!(aggregate(&points, 0, ZoomAgg::Max).len(), 5);
+        let maxed = aggregate(&points, 2, ZoomAgg::Max);
+        assert_eq!(maxed[0], Some(1.0));
+        assert_eq!(maxed[1], Some(5.0));
+        assert_eq!(maxed[2], Some(0.0));
+        let mean = aggregate(&points, 3, ZoomAgg::Mean);
+        assert_eq!(mean.len(), 2);
+        assert!((mean[1].unwrap() - 2.5).abs() < 1e-9);
+        assert_eq!(aggregate(&[None], 4, ZoomAgg::Mean)[0], None);
+    }
+
+    #[test]
+    fn resizing_keeps_chart_drawable() {
+        let theme = Theme::dark();
+        let series = vec![
+            Series::new("a", vec![Some(1.0), None, Some(4.0)]),
+            Series::new("b", vec![Some(2.0), Some(3.0), None]),
+        ];
+        for (w, h) in [(80, 12), (12, 3), (240, 8), (40, 5)] {
+            let text = render_text(w, h, |f| {
                 render_line_chart(
                     f.area(),
                     f.buffer_mut(),
@@ -356,8 +550,8 @@ mod tests {
                     &LineChartConfig::default(),
                     &theme,
                 )
-            })
-            .unwrap();
-        let _ = buffer_text(terminal.backend().buffer());
+            });
+            assert_no_control_chars(&text);
+        }
     }
 }
