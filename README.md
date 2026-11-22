@@ -7,19 +7,49 @@
 [![License](https://img.shields.io/github/license/ddproxy/fw-tui)](LICENSE)
 
 `fw-tui` is a small Rust library of reusable terminal dashboard widgets for ratatui-based TUIs.
-It provides a pure model/sanitizer that build without terminal dependencies and, behind the `tui`
-feature, rendering widgets and terminal helpers.
+It provides a pure model/sanitizer that builds without terminal dependencies and, behind the `tui`
+feature, rendering widgets and terminal helpers. The crate forbids unsafe code.
 
 ## Features
 
 - `tui` (off by default): enables ratatui/crossterm widgets, drawing helpers, terminal guard, and event loop.
+
+## Usage
+
+The model and sanitizer have no terminal dependencies:
+
+```rust
+use std::time::Instant;
+
+use fw_tui::model::Dashboard;
+
+let mut dashboard = Dashboard::new(&["peer-a", "host-1"]);
+dashboard.tick();
+let view = dashboard.view(Instant::now());
+assert!(view.plain_text().contains("peer-a"));
+```
+
+With `tui` enabled, widgets render into a ratatui buffer or `Frame`:
+
+```rust
+use fw_tui::theme::Theme;
+use fw_tui::widgets::{render_tabs, Panel};
+use ratatui::backend::TestBackend;
+use ratatui::Terminal;
+
+let mut terminal = Terminal::new(TestBackend::new(30, 3)).unwrap();
+terminal.draw(|frame| {
+    Panel::new("Tabs").render(frame, frame.area(), &Theme::dark());
+    render_tabs(frame.area(), frame.buffer_mut(), &["one", "two"], 0, &Theme::dark());
+}).unwrap();
+```
 
 ## Widgets
 
 Data-agnostic widgets take plain data (strings, numbers, slices), not application types:
 
 - **Theme**: semantic styles (`title`, `label`, `dim`, `good`, `warn`, `bad`, `accent`, selected/header/border) with dark and `NO_COLOR`-friendly monochrome variants.
-- **Panel**: bordered block with title and optional right-aligned hint/title.
+- **Panel**: bordered block with title and optional right-aligned bottom title.
 - **Header/Footer bars**: header with left/right text, footer with toggle chips (`[■ detail]`, `[privacy: 0]`).
 - **Tabs**: labeled row with selection and truncation.
 - **Table**: columns (fixed/min/flex/right), reversed header, selection/scroll, optional status dot, expandable selected row details, visible-range reporting.
@@ -32,7 +62,11 @@ Data-agnostic widgets take plain data (strings, numbers, slices), not applicatio
 - **PrivacyMask**: deterministic masking helper (none/abbreviate/token).
 - **Text helpers**: `buffer_text`, width-aware truncate/pad, `fmt_duration`, `fmt_count`, `fmt_bytes`.
 
-All widgets sanitize untrusted strings, clamp hostile numbers, truncate by display width without splitting chars, and tolerate tiny/zero areas without panicking.
+All widgets sanitize untrusted strings (including ANSI escape sequences, bidi overrides and
+invisible format characters), clamp hostile numbers, truncate by display width without splitting
+chars, and tolerate tiny/zero areas without panicking. Escaping is applied at the drawing boundary
+as well as in constructors, so publicly constructed data cannot inject terminal controls. Unknown
+configuration keys remain errors; credentials are never logged or stored.
 
 ## Example
 
@@ -45,14 +79,21 @@ cargo run --features tui --example gallery
 
 ```sh
 export CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_TARGET_DIR=/srv/work/target-ft
-cargo test --features tui
-cargo test
+cargo test --locked
+cargo test --all-features --locked
+cargo clippy --all-targets --all-features --locked -- -D warnings
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features --locked
+cargo fmt --all -- --check
 ```
+
+`cargo test` also runs the doc tests: every public item has a compiling example. `cargo llvm-cov`
+can be used for coverage when the `llvm-tools-preview` rustup component is available.
 
 ## Documentation
 
 - [Documentation index](docs/index.md)
 - [Security scanning](docs/security-scanning.md)
+- [Changelog](CHANGELOG.md)
 
 ## Security
 

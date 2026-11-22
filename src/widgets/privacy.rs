@@ -1,7 +1,32 @@
+//! Deterministic privacy masks for screenshots.
+//!
+//! Requires the `tui` feature (re-exported from [`crate::widgets`]).
+//!
+//! # Examples
+//!
+//! ```
+//! use fw_tui::widgets::mask;
+//!
+//! assert_eq!(mask("peer-a", 0), "peer-a");
+//! assert_eq!(mask("peer-a", 1), "pe..-a");
+//! ```
+
 use crate::sanitize::printable;
 
 /// Mask text for screenshots. Level 0 none, 1 abbreviate middle, 2 stable short token.
 /// Deterministic fold, no hashing crates.
+///
+/// Escaping happens before masking, so a control sequence cannot survive at any level.
+///
+/// # Examples
+///
+/// ```
+/// use fw_tui::widgets::mask;
+///
+/// let token = mask("host-1", 2);
+/// assert!(token.starts_with("id-"));
+/// assert_eq!(token, mask("host-1", 2));
+/// ```
 pub fn mask(text: &str, level: u8) -> String {
     let clean = printable(text);
     match level {
@@ -58,5 +83,28 @@ mod tests {
     fn mask_sanitizes() {
         let m = mask("a\u{1b}b", 0);
         assert!(!m.contains('\u{1b}'));
+        assert_eq!(m, "a?b");
+        for level in [0, 1, 2, 255] {
+            let masked = mask("x\u{202e}y", level);
+            assert!(!masked.contains('\u{202e}'));
+            assert!(!masked.contains('\u{1b}'));
+        }
+    }
+
+    #[test]
+    fn mask_handles_empty_short_and_wide_text() {
+        assert_eq!(mask("", 0), "");
+        assert_eq!(mask("", 1), "");
+        assert_eq!(mask("abc", 1), "***");
+        assert_eq!(mask("中中中中中", 1), "中中..中中");
+        assert_eq!(mask("e\u{301}fghi", 2), mask("e\u{301}fghi", 2));
+    }
+
+    #[test]
+    fn token_level_never_stores_the_input() {
+        let token = mask("secret-value", 2);
+        assert!(!token.contains("secret"));
+        assert!(token.starts_with("id-"));
+        assert!(token.len() <= "id-".len() + 16);
     }
 }

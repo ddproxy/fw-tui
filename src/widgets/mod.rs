@@ -1,3 +1,26 @@
+//! Data-agnostic terminal widgets.
+//!
+//! Requires the `tui` feature. Every widget takes plain strings and numbers, escapes untrusted
+//! text, clamps hostile numbers and tolerates zero-sized areas.
+//!
+//! # Examples
+//!
+//! ```
+//! use fw_tui::theme::Theme;
+//! use fw_tui::widgets::{render_tabs, Panel};
+//! use ratatui::backend::TestBackend;
+//! use ratatui::Terminal;
+//!
+//! let theme = Theme::dark();
+//! let mut terminal = Terminal::new(TestBackend::new(30, 3)).unwrap();
+//! terminal
+//!     .draw(|frame| {
+//!         Panel::new("Tabs").render(frame, frame.area(), &theme);
+//!         render_tabs(frame.area(), frame.buffer_mut(), &["one", "two"], 0, &theme);
+//!     })
+//!     .unwrap();
+//! ```
+
 pub mod bars;
 pub mod frequency;
 pub mod gauge;
