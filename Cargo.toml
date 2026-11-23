@@ -19,6 +19,13 @@ crossterm = { version = "0.29", optional = true }
 name = "gallery"
 required-features = ["tui"]
 
+[[example]]
+name = "config_minimal"
+
+[[example]]
+name = "config_full"
+required-features = ["tui"]
+
 [lints.rust]
 unsafe_code = "forbid"
 

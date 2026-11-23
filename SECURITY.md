@@ -6,7 +6,11 @@ Report vulnerabilities through [GitHub private vulnerability reporting](https://
 
 ## Supported versions
 
-Only the latest release receives security fixes. Upgrade to the newest [release](https://github.com/ddproxy/fw-tui/releases/latest) before reporting.
+Only the latest release receives security fixes. The crate is at preview version 0.1.0 and is not published on crates.io. Upgrade to the newest [release](https://github.com/ddproxy/fw-tui/releases/latest) before reporting.
+
+## Threat model
+
+See [security model](docs/security.md) for trust boundaries, what the crate protects and what it does not. Text handling fails closed and layout fails safe; there is no access-control path in this library.
 
 ## Response times
 

@@ -1,33 +1,35 @@
 # Changelog
 
-All notable changes to this project are documented here.
+All notable changes to this project are documented here. Format follows Keep a Changelog.
 
 ## Unreleased
 
 ### Added
 
-- Rustdoc examples for every public item, including modules, enums, variants, structs, fields,
-  methods and functions. Doc tests run with default features and with all features.
-- Regression tests for zero-sized areas, very narrow and very wide terminals, resize, wide
-  Unicode and combining characters, ANSI/control-sequence injection, empty lists, and selection
-  and scrolling bounds.
+- Documentation set covering install, quickstart, configuration, CLI and keys, operations, security model, limits, troubleshooting and architecture.
+- `AGENTS.md` with the stable command list, repo map, conventions and smoke test.
+- `Makefile` with `help`, `build`, `test`, `lint`, `check`, `docs-check` and `install` targets.
+- `scripts/check_docs.sh` to check docs files, relative links, quickstart proof blocks, config examples and code drift.
+- `examples/config_minimal.rs` and `examples/config_full.rs` as validated minimal and full configuration examples.
+- `llms.txt` as a machine-readable docs index.
+- Rustdoc examples for every public item, including modules, enums, variants, structs, fields, methods and functions. Doc tests run with default features and with all features.
+- Regression tests for zero-sized areas, very narrow and very wide terminals, resize, wide Unicode and combining characters, ANSI and control-sequence injection, empty lists, and selection and scrolling bounds.
 - Crate-level `#![forbid(unsafe_code)]` and `#![deny(missing_docs)]` attributes.
 - This changelog.
 
 ### Fixed
 
-- Untrusted strings are now escaped at the drawing boundary for panel titles, gauge labels and
-  right-hand text, table headers, line-chart series names, footer chips and view-model text.
-  Previously, data built through public fields could carry an escape sequence onto the screen.
-- The sanitizer now neutralises additional invisible format characters, including soft hyphen,
-  Arabic format marks, line and paragraph separators, and Unicode tag characters.
-- Model rows and gauge labels now pad by display width, so wide Unicode and combining characters
-  no longer shift the following columns.
-- Table selection and scroll offset are clamped even when the column list is empty, the row list
-  is empty, or the draw area has zero size.
+- Untrusted strings are now escaped at the drawing boundary for panel titles, gauge labels and right-hand text, table headers, line-chart series names, footer chips and view-model text. Previously, data built through public fields could carry an escape sequence onto the screen.
+- The sanitizer now neutralises additional invisible format characters, including soft hyphen, Arabic format marks, line and paragraph separators, and Unicode tag characters.
+- Model rows and gauge labels now pad by display width, so wide Unicode and combining characters no longer shift the following columns.
+- Table selection and scroll offset are clamped even when the column list is empty, the row list is empty, or the draw area has zero size.
 - Removed dead placeholder dataset construction from the line chart; data is now built once.
 
 ### Changed
 
-- No breaking public API changes: names and signatures are unchanged. Display-width helpers are
-  shared through a new private module, and the public `text` helpers keep their existing paths.
+- README and docs follow the shared template: proof first, explicit limits, security model, compatibility matrix and operating notes. No command, flag, key or default was changed.
+- No breaking public API changes: names and signatures are unchanged. Display-width helpers are shared through a new private module, and the public `text` helpers keep their existing paths.
+
+### Upgrade notes
+
+Requires: none. No operator action is needed for this release.

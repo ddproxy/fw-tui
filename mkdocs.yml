@@ -2,4 +2,13 @@ site_name: fw-tui documentation
 
 nav:
   - Home: index.md
+  - Quickstart: quickstart.md
+  - Install: install.md
+  - Configuration: configuration.md
+  - CLI and keys: cli.md
+  - Operations: operations.md
+  - Security model: security.md
   - Security scanning: security-scanning.md
+  - Limits and non-goals: limits.md
+  - Troubleshooting: troubleshooting.md
+  - Architecture: architecture.md

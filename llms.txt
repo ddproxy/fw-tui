@@ -1,0 +1,19 @@
+# fw-tui
+
+> Rust library of terminal dashboard widgets with a terminal-free model.
+
+- [README](README.md): status, install line, quickstart proof, configuration, operations, security and limits.
+- [Documentation index](docs/index.md): one-line guide to every docs page.
+- [Quickstart](docs/quickstart.md): three checkable commands ending in a rendered gallery proof.
+- [Install](docs/install.md): source checkout, path dependency and the optional tui feature.
+- [Configuration](docs/configuration.md): every key, default and clamped value.
+- [CLI and keys](docs/cli.md): gallery flags, interactive keys and demo-loop keys.
+- [Operations](docs/operations.md): upgrade, rollback, backup, health checks and release verification.
+- [Security model](docs/security.md): trust boundaries, protections and non-protections.
+- [Security scanning](docs/security-scanning.md): workflow checks, findings and owner steps.
+- [Limits and non-goals](docs/limits.md): numeric limits, approximations and non-goals.
+- [Troubleshooting](docs/troubleshooting.md): exact messages and fixes.
+- [Architecture](docs/architecture.md): module map, feature boundary and test strategy.
+- [AGENTS](AGENTS.md): commands, conventions and smoke test for agents.
+- [SECURITY](SECURITY.md): reporting, supported versions and threat model link.
+- [CHANGELOG](CHANGELOG.md): changes and upgrade notes.
