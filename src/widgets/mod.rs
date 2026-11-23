@@ -42,5 +42,9 @@ pub use panel::Panel;
 pub use privacy::mask;
 pub use spark::{BarPanel, Scale, Sparkline};
 pub use status_dot::{status_dot, DotState};
-pub use table::{render_table, ColWidth, Column, TableRenderInfo, TableRow, TableViewState};
+pub use table::{
+    render_table, render_table_sorted, sort_column_at, sort_column_at_with_status,
+    sort_permutation, ColWidth, Column, SortKind, TableColumn, TableRenderInfo, TableRow,
+    TableSort, TableViewState,
+};
 pub use tabs::render_tabs;

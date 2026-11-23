@@ -15,3 +15,5 @@ Who this is for: anyone using, operating or changing `fw-tui`. Start with the qu
 | [Troubleshooting](troubleshooting.md) | You have an exact error message and want the fix. |
 | [Architecture](architecture.md) | You are changing the crate and need the module map. |
 | [Changelog](../CHANGELOG.md) | You are upgrading and need upgrade notes. |
+- [Sortable table columns](table-sorting.md) — sort kinds, state helpers, keys and header clicks.
+- [Security scanning](security-scanning.md) — workflow checks, release verification and owner settings.

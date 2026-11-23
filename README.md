@@ -42,6 +42,19 @@ Read `Cargo.toml` and `src/` before trusting the source, then run `cargo test --
    Expected: `PASS source checkout`.
 
 2. Run the tests. The model and sanitizer need no terminal or feature flags.
+- **Theme**: semantic styles (`title`, `label`, `dim`, `good`, `warn`, `bad`, `accent`, selected/header/border) with dark and `NO_COLOR`-friendly monochrome variants.
+- **Panel**: bordered block with title and optional right-aligned bottom title.
+- **Header/Footer bars**: header with left/right text, footer with toggle chips (`[■ detail]`, `[privacy: 0]`).
+- **Tabs**: labeled row with selection and truncation.
+- **Table**: columns (fixed/min/flex/right), reversed header, selection/scroll, optional status dot, expandable selected row details, visible-range reporting, sortable columns (text/number/duration/custom) with header indicators, key bindings and stable key-based selection.
+- **StatusDot**: fixed one-cell state marker with text fallback.
+- **Gauge / CountdownGauge**: horizontal fill bar with right-aligned text, drain/countdown mode.
+- **Sparkline / BarPanel**: compact 8-level sparkline and filled sample bar panel with auto/fixed/shared scaling.
+- **LineChart**: multi-series line plot with y ticks, x labels and zoom factor, boxed legend, autoscale floor, gaps for missing points, zoom aggregation.
+- **FrequencyChart**: vertical category bar chart.
+- **Overlay**: centered help/settings box.
+- **PrivacyMask**: deterministic masking helper (none/abbreviate/token).
+- **Text helpers**: `buffer_text`, width-aware truncate/pad, `fmt_duration`, `fmt_count`, `fmt_bytes`.
 
    ```sh
    out="$(cargo test --locked 2>&1)"; printf '%s\n' "$out" | grep -F -m1 'test result: ok.'
@@ -80,6 +93,10 @@ There is no config file or daemon. The knobs below are code-level defaults; the 
 | `mask` level | caller-supplied | `0` leaves text, `1` abbreviates the middle, `2` gives a stable short label. Level 2 and above behave alike. |
 | `Gauge.fraction` | caller-supplied | NaN or negative draws empty; above 1 or infinite draws full. |
 | `Dashboard` names | empty | Rows start at count zero. `tick()` applies a demo step, not a network feed. |
+- [Documentation index](docs/index.md)
+- [Sortable table columns](docs/table-sorting.md)
+- [Security scanning](docs/security-scanning.md)
+- [Changelog](CHANGELOG.md)
 
 The minimal and full examples both compile in CI: `cargo check --locked --example config_minimal` and `cargo check --locked --features tui --example config_full`. See `examples/` and [configuration](docs/configuration.md).
 

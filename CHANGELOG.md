@@ -14,6 +14,22 @@ All notable changes to this project are documented here. Format follows Keep a C
 - `llms.txt` as a machine-readable docs index.
 - Rustdoc examples for every public item, including modules, enums, variants, structs, fields, methods and functions. Doc tests run with default features and with all features.
 - Regression tests for zero-sized areas, very narrow and very wide terminals, resize, wide Unicode and combining characters, ANSI and control-sequence injection, empty lists, and selection and scrolling bounds.
+- Sortable table columns via `TableColumn`, `SortKind` (case-insensitive natural text, numbers with
+  separators/units/percentages, durations and custom comparisons) and `TableSort`.
+- `render_table_sorted` draws a stable index permutation without reordering caller rows, reports
+  visible row indices and shows a sort indicator; column widths are unchanged. ASCII indicators are
+  used when the theme requests them.
+- `TableViewState` sort helpers (`cycle_sort`, `sort_next_column`, `sort_prev_column`,
+  `reverse_sort`, `handle_sort_key`) plus `sort_column_at` for header clicks.
+- Optional `TableRow::key` keeps the selection on the same row across re-sorts and data refreshes;
+  `sorted_indices` exposes the permutation for callers.
+- Sortable table guide, gallery keys (`s`/`S`/`r`) and regression tests for ordering, stability,
+  selection tracking, click mapping, indicators and 10k-row sorting.
+- Rustdoc examples for every public item, including modules, enums, variants, structs, fields,
+  methods and functions. Doc tests run with default features and with all features.
+- Regression tests for zero-sized areas, very narrow and very wide terminals, resize, wide
+  Unicode and combining characters, ANSI/control-sequence injection, empty lists, and selection
+  and scrolling bounds.
 - Crate-level `#![forbid(unsafe_code)]` and `#![deny(missing_docs)]` attributes.
 - This changelog.
 
@@ -33,3 +49,7 @@ All notable changes to this project are documented here. Format follows Keep a C
 ### Upgrade notes
 
 Requires: none. No operator action is needed for this release.
+- No breaking public API changes: names and signatures are unchanged. Display-width helpers are
+  shared through a new private module, and the public `text` helpers keep their existing paths.
+  Sorting extends the existing table types with additive fields; `TableViewState::new` and
+  `..Default::default()` cover struct literals.

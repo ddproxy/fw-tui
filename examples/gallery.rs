@@ -11,10 +11,17 @@ use fw_tui::text::buffer_text;
 use fw_tui::theme::Theme;
 use fw_tui::widgets::{
     mask, render_footer_bar, render_frequency_chart, render_header_bar, render_line_chart,
-    render_overlay, render_table, render_tabs, status_dot, BarPanel, ColWidth, Column,
-    CountdownGauge, DotState, FrequencyBar, LineChartConfig, Panel, Scale, Series, Sparkline,
-    TableRow, TableViewState, ToggleChip, ZoomAgg,
+    render_overlay, render_table_sorted, render_tabs, status_dot, BarPanel, ColWidth,
+    CountdownGauge, DotState, FrequencyBar, LineChartConfig, Panel, Scale, Series, SortKind,
+    Sparkline, TableColumn, TableRow, TableViewState, ToggleChip, ZoomAgg,
 };
+
+fn table_columns() -> Vec<TableColumn> {
+    vec![
+        TableColumn::sortable("Name", ColWidth::Flex(1), SortKind::Text),
+        TableColumn::sortable("Count", ColWidth::Fixed(8), SortKind::Number).right(),
+    ]
+}
 
 fn render_gallery(
     frame: &mut ratatui::Frame,
@@ -41,7 +48,7 @@ fn render_gallery(
         header_inner,
         frame.buffer_mut(),
         &["fw-tui gallery".into(), "demo".into()],
-        &["12:00:00".into(), "[?] help [q] quit".into()],
+        &["12:00:00".into(), "[?] help [s/S/r] sort [q] quit".into()],
         theme,
     );
 
@@ -61,20 +68,17 @@ fn render_gallery(
     // Table
     Panel::new("Table").render(frame, mid[0], theme);
     let tinner = Panel::inner(mid[0]);
-    let cols = vec![
-        Column::new("Name", ColWidth::Flex(1)),
-        Column::new("Count", ColWidth::Fixed(8)).right(),
-    ];
+    let cols = table_columns();
     let mut rows = vec![
-        TableRow::new(vec!["peer-a".into(), "120".into()]),
-        TableRow::new(vec!["host-1".into(), "42".into()]),
-        TableRow::new(vec!["node-x".into(), "7".into()]),
+        TableRow::new(vec!["peer-a".into(), "120".into()]).with_key("peer-a"),
+        TableRow::new(vec!["host-1".into(), "1,042".into()]).with_key("host-1"),
+        TableRow::new(vec!["node-x".into(), "7".into()]).with_key("node-x"),
     ];
     rows[0].status = Some(status_dot(DotState::Good, theme, false));
     rows[1].status = Some(status_dot(DotState::Warn, theme, false));
     rows[2].status = Some(status_dot(DotState::Bad, theme, false));
-    rows[1].detail = vec![format!("masked: {}", mask("host-1-secret", 1))];
-    render_table(tinner, frame.buffer_mut(), &cols, &rows, table_state, theme);
+    rows[1].detail = vec![format!("masked: {}", mask("host-1-note", 1))];
+    render_table_sorted(tinner, frame.buffer_mut(), &cols, &rows, table_state, theme);
 
     // Right side charts/gauges
     let right = Layout::default()
@@ -182,6 +186,7 @@ fn render_once() -> String {
     let mut terminal = Terminal::new(backend).unwrap();
     let theme = Theme::monochrome();
     let mut state = TableViewState::default();
+    state.cycle_sort(1);
     terminal
         .draw(|f| render_gallery(f, &theme, &mut state, false))
         .unwrap();
@@ -195,12 +200,16 @@ fn run_tui() -> io::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     let theme = Theme::auto();
+    let columns = table_columns();
     let mut state = TableViewState::default();
     let mut show_overlay = false;
     loop {
         terminal.draw(|f| render_gallery(f, &theme, &mut state, show_overlay))?;
         if event::poll(std::time::Duration::from_millis(200))? {
             if let Event::Key(k) = event::read()? {
+                if state.handle_sort_key(k, &columns) {
+                    continue;
+                }
                 match k.code {
                     KeyCode::Char('q') => break,
                     KeyCode::Char('?') => show_overlay = !show_overlay,
