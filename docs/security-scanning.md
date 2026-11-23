@@ -1,15 +1,21 @@
 # Security scanning
 
+Who this is for: a maintainer or reviewer who needs to know what each workflow checks and where its findings appear.
+
 All checks run in GitHub Actions. The required status checks on pull requests are `test`, `Audit`, `CodeQL` and `dependency-review`.
 
 | Workflow | Checks | Findings |
 | --- | --- | --- |
-| [CI](../.github/workflows/ci.yml) | Formatting, clippy with `-D warnings`, and tests with default and all features; every cargo invocation uses `--locked`. | Checks tab on the commit or pull request. |
+| [CI](../.github/workflows/ci.yml) | Formatting, clippy with `-D warnings`, rustdoc with warnings denied, tests with default and all features, and docs checks; every cargo invocation uses `--locked`. | Checks tab on the commit or pull request. |
 | [Audit](../.github/workflows/audit.yml) | `cargo deny check advisories bans licenses sources` on push, pull requests and daily. Licences and sources come from [deny.toml](../deny.toml). | Checks tab; full diagnostics in the workflow log. |
 | [CodeQL](../.github/workflows/codeql.yml) | Rust static analysis with `build-mode: none` on main pushes, pull requests and weekly. | Security tab → Code scanning alerts. |
 | [Scorecard](../.github/workflows/scorecard.yml) | OpenSSF Scorecard on main pushes and weekly; results are published. | Security tab → Code scanning alerts; the SARIF file is also an artifact kept for 5 days. |
 | [Dependency Review](../.github/workflows/dependency-review.yml) | New dependency vulnerabilities at high severity or above, and licences outside `deny.toml`. | Checks tab on the pull request. |
 | [Release](../.github/workflows/release.yml) | On `v*` tags, a CycloneDX JSON SBOM, SHA-256 checksums and a build provenance attestation for the source archive. | Release assets and GitHub attestations. |
+
+## Local checks
+
+`bash scripts/check_workflows.sh` validates workflow YAML, action pins, permissions, licence sync and Dependabot config before a pull request. `make docs-check` validates docs structure, links, quickstart proof, drift and the two configuration examples. `make check` adds formatting, clippy, rustdoc and tests.
 
 ## Verify a release
 
@@ -28,7 +34,7 @@ sha256sum --check checksums.txt
 
 `fw-tui-${tag}-sbom.json` is a CycloneDX SBOM; inspect it as JSON or in a CycloneDX viewer.
 
-## Repository settings — owner steps
+## Repository settings (owner steps)
 
 These settings live in GitHub and cannot be set from files. The repository owner must:
 

@@ -26,3 +26,7 @@ jobs:
         run: cargo test --locked
       - name: Tests with all features
         run: cargo test --all-features --locked
+      - name: Rustdoc
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features --locked
+      - name: Docs check
+        run: bash scripts/check_docs.sh
