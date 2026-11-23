@@ -8,6 +8,7 @@ nav:
   - CLI and keys: cli.md
   - Operations: operations.md
   - Security model: security.md
+  - Sortable table columns: table-sorting.md
   - Security scanning: security-scanning.md
   - Limits and non-goals: limits.md
   - Troubleshooting: troubleshooting.md

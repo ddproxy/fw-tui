@@ -203,6 +203,22 @@ impl Theme {
             Self::dark()
         }
     }
+
+    /// Whether widgets should prefer ASCII markers over Unicode ones.
+    ///
+    /// Monochrome themes request ASCII; colourful themes use Unicode glyphs.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fw_tui::theme::Theme;
+    ///
+    /// assert!(!Theme::dark().prefers_ascii());
+    /// assert!(Theme::monochrome().prefers_ascii());
+    /// ```
+    pub fn prefers_ascii(&self) -> bool {
+        self.title.fg.is_none()
+    }
 }
 
 #[cfg(test)]
